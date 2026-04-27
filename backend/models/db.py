@@ -22,12 +22,15 @@ def _initialize_mongo():
     try:
         logger.info("Connecting to MongoDB...")
         
-        # Standard connection with timeout settings
+        # Standard connection with timeout settings and SSL support
         _client = MongoClient(
             Config.MONGO_URI,
             serverSelectionTimeoutMS=10000,
             connectTimeoutMS=15000,
             retryWrites=True,
+            ssl=True,
+            tlsInsecure=False,
+            tlsCAFile=None,  # Use system default certificates
         )
         # Verify connection
         _client.admin.command('ping')
