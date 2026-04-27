@@ -6,6 +6,12 @@ from backend.utils.serialize import serialize_record
 
 
 def get_history():
-    email = get_jwt_identity()
-    records = history_collection.find({"userEmail": email}).sort("createdAt", -1)
-    return jsonify({"records": [serialize_record(item) for item in records]}), 200
+    try:
+        email = get_jwt_identity()
+        if not history_collection:
+            return jsonify({"records": [], "warning": "History database temporarily unavailable"}), 200
+        
+        records = history_collection.find({"userEmail": email}).sort("createdAt", -1)
+        return jsonify({"records": [serialize_record(item) for item in records]}), 200
+    except Exception as e:
+        return jsonify({"records": [], "warning": f"Failed to retrieve history: {str(e)}"}), 200

@@ -75,9 +75,21 @@ def create_prediction():
             },
             "createdAt": datetime.utcnow(),
         }
-        inserted = history_collection.insert_one(record)
-        stored = history_collection.find_one({"_id": inserted.inserted_id})
-        return jsonify({"record": serialize_record(stored)}), 201
+        
+        # Try to save to MongoDB if available
+        if history_collection:
+            try:
+                inserted = history_collection.insert_one(record)
+                stored = history_collection.find_one({"_id": inserted.inserted_id})
+                return jsonify({"record": serialize_record(stored)}), 201
+            except Exception as mongo_error:
+                # If MongoDB fails, return the record without storing
+                import logging
+                logging.warning(f"Failed to store prediction in MongoDB: {str(mongo_error)}")
+                return jsonify({"record": {"prediction": record["prediction"], "images": record["images"]}}), 201
+        else:
+            # MongoDB not available, return record without storing
+            return jsonify({"record": {"prediction": record["prediction"], "images": record["images"]}}), 201
     except Exception as error:
         return jsonify({"message": f"Prediction failed: {str(error)}"}), 500
 
