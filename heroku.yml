@@ -1,0 +1,9 @@
+build:
+  languages:
+    - python
+    - nodejs
+  buildpacks:
+    - heroku/python
+    - heroku/nodejs
+run:
+  web: gunicorn app:app

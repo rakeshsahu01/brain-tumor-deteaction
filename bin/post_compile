@@ -1,0 +1,18 @@
+#!/bin/bash
+# Heroku post-compile hook for building React frontend
+
+echo "Building React frontend..."
+
+# Navigate to client directory
+cd client
+
+# Install dependencies (should already be done by Node.js buildpack)
+npm install --production
+
+# Build React app
+npm run build
+
+# Navigate back to root
+cd ..
+
+echo "React frontend built successfully!"
