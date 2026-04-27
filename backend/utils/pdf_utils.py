@@ -2,18 +2,44 @@ import base64
 from datetime import datetime
 from io import BytesIO
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
+# Lazy imports for reportlab - these are only needed when generating PDFs
+_reportlab_loaded = False
+colors = None
+A4 = None
+cm = None
+ImageReader = None
+canvas = None
+
+
+def _load_reportlab():
+    global _reportlab_loaded, colors, A4, cm, ImageReader, canvas
+    if _reportlab_loaded:
+        return
+    
+    try:
+        from reportlab.lib import colors as _colors
+        from reportlab.lib.pagesizes import A4 as _A4
+        from reportlab.lib.units import cm as _cm
+        from reportlab.lib.utils import ImageReader as _ImageReader
+        from reportlab.pdfgen import canvas as _canvas
+        
+        colors = _colors
+        A4 = _A4
+        cm = _cm
+        ImageReader = _ImageReader
+        canvas = _canvas
+        _reportlab_loaded = True
+    except ImportError as e:
+        raise ImportError(f"ReportLab is required for PDF generation: {e}")
 
 
 def _image_from_base64(data):
+    _load_reportlab()
     return ImageReader(BytesIO(base64.b64decode(data)))
 
 
 def build_report_pdf(record):
+    _load_reportlab()
     pdf_bytes = BytesIO()
     c = canvas.Canvas(pdf_bytes, pagesize=A4)
     width, height = A4

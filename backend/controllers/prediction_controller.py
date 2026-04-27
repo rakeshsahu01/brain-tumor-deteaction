@@ -21,25 +21,27 @@ def create_prediction():
         user_email = get_jwt_identity()
         if patient_id:
             try:
-                patient_doc = patients_collection.find_one({"_id": ObjectId(patient_id), "userEmail": user_email})
+                # Try to look up in MongoDB if the ID looks like an ObjectId
+                if len(str(patient_id)) == 24 and all(c in '0123456789abcdef' for c in str(patient_id).lower()):
+                    patient_doc = patients_collection.find_one({"_id": ObjectId(patient_id), "userEmail": user_email})
+                    if patient_doc:
+                        patient = {
+                            "patientId": patient_doc.get("patientId", ""),
+                            "fullName": patient_doc.get("fullName", ""),
+                            "age": patient_doc.get("age", ""),
+                            "gender": patient_doc.get("gender", ""),
+                            "phone": patient_doc.get("phone", ""),
+                            "email": patient_doc.get("email", ""),
+                            "address": patient_doc.get("address", ""),
+                            "doctorName": patient_doc.get("doctorName", ""),
+                            "allergies": patient_doc.get("allergies", ""),
+                            "medicalHistory": patient_doc.get("medicalHistory", ""),
+                            "symptoms": patient_doc.get("symptoms", ""),
+                            "bloodGroup": patient_doc.get("bloodGroup", ""),
+                        }
             except Exception:
-                patient_doc = None
-            if not patient_doc:
-                return jsonify({"message": "Invalid patient selected"}), 404
-            patient = {
-                "patientId": patient_doc.get("patientId", ""),
-                "fullName": patient_doc.get("fullName", ""),
-                "age": patient_doc.get("age", ""),
-                "gender": patient_doc.get("gender", ""),
-                "phone": patient_doc.get("phone", ""),
-                "email": patient_doc.get("email", ""),
-                "address": patient_doc.get("address", ""),
-                "doctorName": patient_doc.get("doctorName", ""),
-                "allergies": patient_doc.get("allergies", ""),
-                "medicalHistory": patient_doc.get("medicalHistory", ""),
-                "symptoms": patient_doc.get("symptoms", ""),
-                "bloodGroup": patient_doc.get("bloodGroup", ""),
-            }
+                # If MongoDB lookup fails, continue with patient data from payload
+                pass
 
         prediction_result = predict_image(base64_image)
         gradcam = generate_gradcam(base64_image)
