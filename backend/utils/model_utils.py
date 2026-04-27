@@ -4,13 +4,38 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import tensorflow as tf
 from PIL import Image
-from tensorflow.keras.models import load_model, model_from_json
-from tensorflow.python.keras.models import Model as LegacyModel
-from tensorflow.python.keras.models import model_from_json as legacy_model_from_json
 
 from backend.config import Config
+
+# Lazy imports for tensorflow to avoid import errors during backend startup
+_tensorflow_loaded = False
+tf = None
+load_model = None
+model_from_json = None
+LegacyModel = None
+legacy_model_from_json = None
+
+
+def _load_tensorflow():
+    global _tensorflow_loaded, tf, load_model, model_from_json, LegacyModel, legacy_model_from_json
+    if _tensorflow_loaded:
+        return
+    
+    try:
+        import tensorflow
+        from tensorflow.keras.models import load_model as _load_model, model_from_json as _model_from_json
+        from tensorflow.python.keras.models import Model as _LegacyModel
+        from tensorflow.python.keras.models import model_from_json as _legacy_model_from_json
+        
+        tf = tensorflow
+        load_model = _load_model
+        model_from_json = _model_from_json
+        LegacyModel = _LegacyModel
+        legacy_model_from_json = _legacy_model_from_json
+        _tensorflow_loaded = True
+    except ImportError as e:
+        raise ImportError(f"TensorFlow is required for model loading: {e}")
 
 
 CLASS_NAMES = ["Glioma", "Meningioma", "Pituitary Tumor", "No Tumor"]
@@ -33,6 +58,7 @@ def _to_model_input(pil_image):
 
 def get_model():
     global _model
+    _load_tensorflow()
     if _model is not None:
         return _model
 
@@ -93,6 +119,7 @@ def _encode_np_image(image_np):
 
 
 def generate_gradcam(base64_image):
+    _load_tensorflow()
     model = get_model()
     pil_image = _decode_image(base64_image)
     model_input = _to_model_input(pil_image)
