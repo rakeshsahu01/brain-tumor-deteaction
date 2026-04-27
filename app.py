@@ -20,6 +20,11 @@ try:
     app = create_app()
     logger.info("Flask app created successfully")
     
+    # Add a simple health check endpoint
+    @app.route('/health')
+    def health():
+        return {"status": "healthy"}, 200
+    
 except Exception as e:
     logger.error(f"Failed to initialize app: {str(e)}", exc_info=True)
     sys.exit(1)

@@ -25,5 +25,5 @@ RUN mkdir -p client/build && chmod -R 755 client/build
 # Expose port
 EXPOSE 8000
 
-# Start command
-CMD ["gunicorn", "--workers", "1", "--worker-class", "sync", "--timeout", "300", "--bind", "0.0.0.0:8000", "app:app"]
+# Start command - use PORT environment variable (Railway sets this dynamically)
+CMD gunicorn --workers 1 --worker-class sync --timeout 300 --bind 0.0.0.0:${PORT:-8000} app:app
