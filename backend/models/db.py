@@ -1,8 +1,6 @@
 from pymongo import MongoClient
 from backend.config import Config
 import logging
-import ssl
-import certifi
 
 logger = logging.getLogger(__name__)
 
@@ -22,35 +20,23 @@ def _initialize_mongo():
         return
     
     try:
-        logger.info(f"Connecting to MongoDB: {Config.MONGO_URI}")
+        logger.info(f"Connecting to MongoDB...")
         
-        # Create a custom SSL context
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
+        # Add SSL certificate verification bypass to connection string for Railway environment
+        mongo_uri = Config.MONGO_URI
+        if "?" in mongo_uri:
+            mongo_uri = f"{mongo_uri}&tlsAllowInvalidCertificates=true&tlsInsecure=true"
+        else:
+            mongo_uri = f"{mongo_uri}?tlsAllowInvalidCertificates=true&tlsInsecure=true"
         
-        # Try with custom SSL context
-        try:
-            _client = MongoClient(
-                Config.MONGO_URI,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=10000,
-                ssl_context=ssl_context,
-            )
-            _client.admin.command('ping')
-            logger.info("MongoDB connected successfully")
-        except Exception as e:
-            logger.warning(f"First connection attempt failed: {str(e)}, retrying...")
-            # Retry once more with fresh connection
-            _client = MongoClient(
-                Config.MONGO_URI,
-                serverSelectionTimeoutMS=10000,
-                connectTimeoutMS=15000,
-                ssl_context=ssl_context,
-            )
-            _client.admin.command('ping')
-            logger.info("MongoDB connected successfully on retry")
-        
+        _client = MongoClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=10000,
+        )
+        # Verify connection
+        _client.admin.command('ping')
+        logger.info("MongoDB connected successfully")
         _db = _client[Config.DB_NAME]
         _users_collection = _db["users"]
         _history_collection = _db["prediction_history"]
