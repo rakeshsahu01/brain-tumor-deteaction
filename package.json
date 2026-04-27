@@ -4,7 +4,8 @@
   "description": "Brain Tumor Detection using VGG-16",
   "main": "app.py",
   "scripts": {
-    "heroku-postbuild": "cd client && npm install && npm run build"
+    "heroku-postbuild": "cd client && npm install && npm run build",
+    "build": "cd client && npm install && npm run build"
   },
   "engines": {
     "node": "18.x",
