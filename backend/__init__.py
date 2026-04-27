@@ -24,10 +24,6 @@ def create_app():
     app.register_blueprint(history_bp)
     app.register_blueprint(report_bp)
 
-    @app.get("/home")
-    def home():
-        return jsonify({"message": "Brain Tumor AI backend is running"})
-
     # Serve React frontend
     @app.route('/')
     def serve_index():
