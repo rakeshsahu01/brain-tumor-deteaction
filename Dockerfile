@@ -25,9 +25,5 @@ RUN mkdir -p client/build && chmod -R 755 client/build
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/home')" || exit 1
-
 # Start command
 CMD ["gunicorn", "--workers", "1", "--worker-class", "sync", "--timeout", "300", "--bind", "0.0.0.0:8000", "app:app"]
