@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from backend.config import Config
 import logging
+import ssl
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,18 @@ def _initialize_mongo():
     
     try:
         logger.info(f"Connecting to MongoDB: {Config.MONGO_URI}")
-        _client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
+        
+        # Create SSL context to handle TLS issues in containerized environments
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        
+        _client = MongoClient(
+            Config.MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+            tlsCAFile=None,
+            ssl_context=ssl_context
+        )
         # Verify connection
         _client.admin.command('ping')
         logger.info("MongoDB connected successfully")
