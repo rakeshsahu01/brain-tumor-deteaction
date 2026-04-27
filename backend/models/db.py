@@ -20,19 +20,14 @@ def _initialize_mongo():
         return
     
     try:
-        logger.info(f"Connecting to MongoDB...")
+        logger.info("Connecting to MongoDB...")
         
-        # Add SSL certificate verification bypass to connection string for Railway environment
-        mongo_uri = Config.MONGO_URI
-        if "?" in mongo_uri:
-            mongo_uri = f"{mongo_uri}&tlsAllowInvalidCertificates=true&tlsInsecure=true"
-        else:
-            mongo_uri = f"{mongo_uri}?tlsAllowInvalidCertificates=true&tlsInsecure=true"
-        
+        # Standard connection with timeout settings
         _client = MongoClient(
-            mongo_uri,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=10000,
+            Config.MONGO_URI,
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=15000,
+            retryWrites=True,
         )
         # Verify connection
         _client.admin.command('ping')

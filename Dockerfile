@@ -3,9 +3,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies with SSL certificates
 RUN apt-get update && apt-get install -y \
     build-essential \
+    ca-certificates \
+    openssl \
+    curl \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python requirements
