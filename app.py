@@ -20,11 +20,6 @@ try:
     app = create_app()
     logger.info("Flask app created successfully")
     
-    # Add a simple home route
-    @app.route('/')
-    def home():
-        return "App is running", 200
-    
     # Add a simple health check endpoint
     @app.route('/health')
     def health():
