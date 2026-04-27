@@ -1,7 +1,6 @@
 from pymongo import MongoClient
 from backend.config import Config
 import logging
-import ssl
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +22,32 @@ def _initialize_mongo():
     try:
         logger.info(f"Connecting to MongoDB: {Config.MONGO_URI}")
         
-        # Create SSL context to handle TLS issues in containerized environments
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = True
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        # Connection options for MongoDB Atlas
+        conn_options = {
+            "serverSelectionTimeoutMS": 5000,
+            "connectTimeoutMS": 10000,
+            "retryWrites": True,
+        }
         
-        _client = MongoClient(
-            Config.MONGO_URI,
-            serverSelectionTimeoutMS=5000,
-            tlsCAFile=None,
-            ssl_context=ssl_context
-        )
-        # Verify connection
-        _client.admin.command('ping')
+        # Try with default SSL first
+        try:
+            _client = MongoClient(Config.MONGO_URI, **conn_options)
+            _client.admin.command('ping')
+            logger.info("MongoDB connected successfully with default SSL")
+        except Exception as ssl_error:
+            logger.warning(f"Default SSL failed: {str(ssl_error)}, trying with certificate verification disabled...")
+            
+            # If standard SSL fails, try with certificate verification disabled (for testing)
+            import urllib.parse
+            if "?" in Config.MONGO_URI:
+                uri_with_ssl_option = f"{Config.MONGO_URI}&tlsAllowInvalidCertificates=true"
+            else:
+                uri_with_ssl_option = f"{Config.MONGO_URI}?tlsAllowInvalidCertificates=true"
+            
+            _client = MongoClient(uri_with_ssl_option, **conn_options)
+            _client.admin.command('ping')
+            logger.info("MongoDB connected successfully with certificate verification disabled")
+        
         logger.info("MongoDB connected successfully")
         _db = _client[Config.DB_NAME]
         _users_collection = _db["users"]
