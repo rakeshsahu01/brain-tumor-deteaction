@@ -1,6 +1,8 @@
 from pymongo import MongoClient
 from backend.config import Config
 import logging
+import ssl
+import certifi
 
 logger = logging.getLogger(__name__)
 
@@ -22,33 +24,33 @@ def _initialize_mongo():
     try:
         logger.info(f"Connecting to MongoDB: {Config.MONGO_URI}")
         
-        # Connection options for MongoDB Atlas
-        conn_options = {
-            "serverSelectionTimeoutMS": 5000,
-            "connectTimeoutMS": 10000,
-            "retryWrites": True,
-        }
+        # Create a custom SSL context
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
         
-        # Try with default SSL first
+        # Try with custom SSL context
         try:
-            _client = MongoClient(Config.MONGO_URI, **conn_options)
+            _client = MongoClient(
+                Config.MONGO_URI,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=10000,
+                ssl_context=ssl_context,
+            )
             _client.admin.command('ping')
-            logger.info("MongoDB connected successfully with default SSL")
-        except Exception as ssl_error:
-            logger.warning(f"Default SSL failed: {str(ssl_error)}, trying with certificate verification disabled...")
-            
-            # If standard SSL fails, try with certificate verification disabled (for testing)
-            import urllib.parse
-            if "?" in Config.MONGO_URI:
-                uri_with_ssl_option = f"{Config.MONGO_URI}&tlsAllowInvalidCertificates=true"
-            else:
-                uri_with_ssl_option = f"{Config.MONGO_URI}?tlsAllowInvalidCertificates=true"
-            
-            _client = MongoClient(uri_with_ssl_option, **conn_options)
+            logger.info("MongoDB connected successfully")
+        except Exception as e:
+            logger.warning(f"First connection attempt failed: {str(e)}, retrying...")
+            # Retry once more with fresh connection
+            _client = MongoClient(
+                Config.MONGO_URI,
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=15000,
+                ssl_context=ssl_context,
+            )
             _client.admin.command('ping')
-            logger.info("MongoDB connected successfully with certificate verification disabled")
+            logger.info("MongoDB connected successfully on retry")
         
-        logger.info("MongoDB connected successfully")
         _db = _client[Config.DB_NAME]
         _users_collection = _db["users"]
         _history_collection = _db["prediction_history"]
