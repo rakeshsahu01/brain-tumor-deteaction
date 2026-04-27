@@ -1,11 +1,4 @@
-FROM node:18-alpine AS client-builder
-
-WORKDIR /app/client
-COPY client/package*.json ./
-RUN npm install
-COPY client . 
-RUN npm run build
-
+# Use pre-built React frontend from repository
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -15,18 +8,22 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy and install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app files
+# Copy all application files
 COPY . .
 
-# Copy built React frontend from first stage
-COPY --from=client-builder /app/client/build ./client/build
+# Ensure build directory exists and has proper permissions
+RUN mkdir -p client/build && chmod -R 755 client/build
 
 # Expose port
 EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/home')" || exit 1
 
 # Start command
 CMD ["gunicorn", "--workers", "1", "--worker-class", "sync", "--timeout", "300", "--bind", "0.0.0.0:8000", "app:app"]

@@ -10,7 +10,8 @@ __pycache__/
 
 # production
 /build
-client/build
+# Keep client/build for deployment
+!client/build
 /dist
 
 # misc
