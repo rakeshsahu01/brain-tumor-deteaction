@@ -4,7 +4,7 @@ from flask import jsonify, request
 from flask_jwt_extended import create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from backend.models.db import users_collection
+from backend.models.db import get_users_collection
 
 
 def signup():
@@ -17,6 +17,7 @@ def signup():
         return jsonify({"message": "Name, email and password are required"}), 400
 
     try:
+        users_collection = get_users_collection()
         if not users_collection:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         
@@ -44,6 +45,7 @@ def login():
     password = payload.get("password", "").strip()
 
     try:
+        users_collection = get_users_collection()
         if not users_collection:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         

@@ -5,7 +5,7 @@ from bson import ObjectId
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
-from backend.models.db import patients_collection
+from backend.models.db import get_patients_collection
 
 
 def _generate_patient_id():
@@ -20,6 +20,7 @@ def create_patient():
         if missing:
             return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
 
+        patients_collection = get_patients_collection()
         if not patients_collection:
             return jsonify({"message": "Database temporarily unavailable"}), 503
 

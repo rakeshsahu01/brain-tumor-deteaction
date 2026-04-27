@@ -4,7 +4,7 @@ from bson import ObjectId
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
-from backend.models.db import history_collection, patients_collection
+from backend.models.db import get_history_collection, get_patients_collection
 from backend.utils.model_utils import generate_gradcam, predict_image
 from backend.utils.serialize import serialize_record
 
@@ -22,6 +22,7 @@ def create_prediction():
         if patient_id:
             try:
                 # Try to look up in MongoDB if the ID looks like an ObjectId
+                patients_collection = get_patients_collection()
                 if len(str(patient_id)) == 24 and all(c in '0123456789abcdef' for c in str(patient_id).lower()):
                     patient_doc = patients_collection.find_one({"_id": ObjectId(patient_id), "userEmail": user_email})
                     if patient_doc:
@@ -77,6 +78,7 @@ def create_prediction():
         }
         
         # Try to save to MongoDB if available
+        history_collection = get_history_collection()
         if history_collection:
             try:
                 inserted = history_collection.insert_one(record)

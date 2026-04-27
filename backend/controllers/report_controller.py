@@ -2,13 +2,14 @@ from bson import ObjectId
 from flask import Response, jsonify
 from flask_jwt_extended import get_jwt_identity
 
-from backend.models.db import history_collection
+from backend.models.db import get_history_collection
 from backend.utils.pdf_utils import build_report_pdf
 
 
 def download_report(record_id):
     try:
         email = get_jwt_identity()
+        history_collection = get_history_collection()
         if not history_collection:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         

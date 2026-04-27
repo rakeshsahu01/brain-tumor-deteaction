@@ -1,13 +1,14 @@
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 
-from backend.models.db import history_collection
+from backend.models.db import get_history_collection
 from backend.utils.serialize import serialize_record
 
 
 def get_history():
     try:
         email = get_jwt_identity()
+        history_collection = get_history_collection()
         if not history_collection:
             return jsonify({"records": [], "warning": "History database temporarily unavailable"}), 200
         
