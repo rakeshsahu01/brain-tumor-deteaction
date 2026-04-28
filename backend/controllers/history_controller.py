@@ -9,7 +9,7 @@ def get_history():
     try:
         email = get_jwt_identity()
         history_collection = get_history_collection()
-        if not history_collection:
+        if history_collection is None:
             return jsonify({"records": [], "warning": "History database temporarily unavailable"}), 200
         
         records = history_collection.find({"userEmail": email}).sort("createdAt", -1)

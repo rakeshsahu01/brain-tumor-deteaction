@@ -21,7 +21,7 @@ def create_patient():
             return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
 
         patients_collection = get_patients_collection()
-        if not patients_collection:
+        if patients_collection is None:
             return jsonify({"message": "Database temporarily unavailable"}), 503
 
         patient_record = {
@@ -71,7 +71,8 @@ def create_patient():
 def get_patient(patient_id):
     try:
         email = get_jwt_identity()
-        if not patients_collection:
+        patients_collection = get_patients_collection()
+        if patients_collection is None:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         
         try:

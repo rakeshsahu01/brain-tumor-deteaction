@@ -18,10 +18,10 @@ def signup():
 
     try:
         users_collection = get_users_collection()
-        if not users_collection:
+        if users_collection is None:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         
-        if users_collection.find_one({"email": email}):
+        if users_collection.find_one({"email": email}) is not None:
             return jsonify({"message": "User already exists"}), 409
 
         users_collection.insert_one(
@@ -46,11 +46,11 @@ def login():
 
     try:
         users_collection = get_users_collection()
-        if not users_collection:
+        if users_collection is None:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         
         user = users_collection.find_one({"email": email})
-        if not user or not check_password_hash(user.get("passwordHash", ""), password):
+        if user is None or not check_password_hash(user.get("passwordHash", ""), password):
             return jsonify({"message": "Invalid email or password"}), 401
 
         token = create_access_token(identity=email)

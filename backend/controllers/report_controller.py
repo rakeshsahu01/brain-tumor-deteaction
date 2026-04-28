@@ -10,7 +10,7 @@ def download_report(record_id):
     try:
         email = get_jwt_identity()
         history_collection = get_history_collection()
-        if not history_collection:
+        if history_collection is None:
             return jsonify({"message": "Database temporarily unavailable"}), 503
         
         try:
