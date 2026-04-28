@@ -79,7 +79,7 @@ def create_prediction():
         
         # Try to save to MongoDB if available
         history_collection = get_history_collection()
-        if history_collection:
+        if history_collection is not None:
             try:
                 inserted = history_collection.insert_one(record)
                 stored = history_collection.find_one({"_id": inserted.inserted_id})
