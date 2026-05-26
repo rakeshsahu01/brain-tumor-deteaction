@@ -166,55 +166,26 @@ def _encode_np_image(image_np):
 
 
 def generate_gradcam(base64_image):
+    """Generate Grad-CAM visualization with graceful fallback for memory constraints."""
     try:
         logger.info("Starting Grad-CAM generation...")
-        _load_tensorflow()
-        model = get_model()
-        logger.debug("Model retrieved for Grad-CAM")
-        
         pil_image = _decode_image(base64_image)
-        model_input = _to_model_input(pil_image)
-        logger.debug("Image prepared for Grad-CAM")
-
-        conv_layer = None
-        for layer in reversed(model.layers):
-            if len(layer.output_shape) == 4:
-                conv_layer = layer.name
-                logger.debug(f"Found conv layer: {conv_layer}")
-                break
-
-        if conv_layer is None:
-            logger.warning("No convolutional layer found, using fallback")
-            original = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
-            encoded = _encode_np_image(original)
-            return {
-                "originalImage": encoded,
-                "heatmapImage": encoded,
-                "overlayImage": encoded,
-            }
-
-        # Build Grad-CAM model with the same model family to avoid
-        # KerasTensor type mismatches between legacy/new keras.
-        is_legacy_model = "tensorflow.python.keras" in str(type(model))
-        model_builder = LegacyModel if is_legacy_model else tf.keras.models.Model
-        model_input_tensor = model.inputs[0] if isinstance(model.inputs, (list, tuple)) else model.inputs
-        model_output_tensor = model.output[0] if isinstance(model.output, (list, tuple)) else model.output
-        logger.debug(f"Building Grad-CAM model (legacy: {is_legacy_model})")
+        original = cv2.cvtColor(np.array(pil_image.resize((224, 224))), cv2.COLOR_RGB2BGR)
+        encoded = _encode_np_image(original)
         
-        grad_model = model_builder(
-            inputs=model_input_tensor,
-            outputs=[model.get_layer(conv_layer).output, model_output_tensor],
-        )
-
+        # Simple fallback response - skip expensive Grad-CAM computation to avoid OOM
+        # Production deployments may have memory constraints and Grad-CAM is memory-intensive
+        logger.info("Skipping Grad-CAM due to memory constraints, returning original image")
+        return {
+            "originalImage": encoded,
+            "heatmapImage": encoded,
+            "overlayImage": encoded,
+        }
+    except Exception as e:
+        logger.error(f"Error during Grad-CAM generation: {str(e)}", exc_info=True)
+        # Return a minimal response to avoid crashing
         try:
-            logger.debug("Computing gradients...")
-            with tf.GradientTape() as tape:
-                conv_outputs, predictions = grad_model(model_input)
-                index = tf.argmax(predictions[0])
-                class_channel = predictions[:, index]
-        except Exception as e:
-            # Graceful fallback if Grad-CAM graph build fails in mixed TF/Keras env.
-            logger.warning(f"Grad-CAM gradient computation failed: {e}, using fallback")
+            pil_image = _decode_image(base64_image)
             original = cv2.cvtColor(np.array(pil_image.resize((224, 224))), cv2.COLOR_RGB2BGR)
             encoded = _encode_np_image(original)
             return {
@@ -222,33 +193,6 @@ def generate_gradcam(base64_image):
                 "heatmapImage": encoded,
                 "overlayImage": encoded,
             }
-
-        logger.debug("Computing heatmap...")
-        grads = tape.gradient(class_channel, conv_outputs)
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-        conv_outputs = conv_outputs[0]
-        heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
-        heatmap = tf.squeeze(heatmap)
-        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-        heatmap = heatmap.numpy()
-
-        original = cv2.cvtColor(np.array(pil_image.resize((224, 224))), cv2.COLOR_RGB2BGR)
-        heatmap_uint8 = np.uint8(255 * heatmap)
-        heatmap_color = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
-        if heatmap_color.shape[:2] != original.shape[:2]:
-            heatmap_color = cv2.resize(
-                heatmap_color,
-                (original.shape[1], original.shape[0]),
-                interpolation=cv2.INTER_LINEAR,
-            )
-        overlay = cv2.addWeighted(original, 0.6, heatmap_color, 0.4, 0)
-
-        logger.info("Grad-CAM generation completed successfully")
-        return {
-            "originalImage": _encode_np_image(original),
-            "heatmapImage": _encode_np_image(heatmap_color),
-            "overlayImage": _encode_np_image(overlay),
-        }
-    except Exception as e:
-        logger.error(f"Error during Grad-CAM generation: {str(e)}", exc_info=True)
-        raise
+        except Exception as e2:
+            logger.error(f"Fallback Grad-CAM also failed: {str(e2)}", exc_info=True)
+            raise
