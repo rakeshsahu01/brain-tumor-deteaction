@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from bson import ObjectId
 from flask import jsonify, request
@@ -8,14 +9,18 @@ from backend.models.db import get_history_collection, get_patients_collection
 from backend.utils.model_utils import generate_gradcam, predict_image
 from backend.utils.serialize import serialize_record
 
+logger = logging.getLogger(__name__)
+
 
 def create_prediction():
     try:
+        logger.info("Starting prediction request")
         payload = request.get_json() or {}
         patient = payload.get("patient", {})
         patient_id = payload.get("patientId")
         base64_image = payload.get("image")
         if not base64_image:
+            logger.warning("No image provided in prediction request")
             return jsonify({"message": "MRI image is required"}), 400
 
         user_email = get_jwt_identity()
@@ -40,12 +45,18 @@ def create_prediction():
                             "symptoms": patient_doc.get("symptoms", ""),
                             "bloodGroup": patient_doc.get("bloodGroup", ""),
                         }
-            except Exception:
+            except Exception as e:
                 # If MongoDB lookup fails, continue with patient data from payload
+                logger.warning(f"Failed to look up patient from MongoDB: {str(e)}")
                 pass
 
+        logger.info("Processing image with model")
         prediction_result = predict_image(base64_image)
+        logger.info(f"Prediction result: {prediction_result['predictedClass']} ({prediction_result['confidence']}%)")
+        
+        logger.info("Generating Grad-CAM visualization")
         gradcam = generate_gradcam(base64_image)
+        logger.info("Grad-CAM generated successfully")
 
         record = {
             "userEmail": user_email,
@@ -93,10 +104,16 @@ def create_prediction():
             # MongoDB not available, return record without storing
             return jsonify({"record": {"prediction": record["prediction"], "images": record["images"]}}), 201
     except Exception as error:
-        return jsonify({"message": f"Prediction failed: {str(error)}"}), 500
+        error_msg = str(error)
+        logger.error(f"Prediction failed: {error_msg}", exc_info=True)
+        return jsonify({
+            "message": f"Prediction failed: {error_msg}",
+            "error": error_msg
+        }), 500
 
 
 def legacy_predict():
+    logger.info("Legacy predict endpoint called")
     payload = request.get_json() or {}
     images = payload.get("image", [])
     if not images:
