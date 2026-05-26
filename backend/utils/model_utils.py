@@ -186,8 +186,11 @@ def generate_gradcam(base64_image):
         heatmap = cv2.GaussianBlur(magnitude, (21, 21), 0)
         heatmap = np.uint8(255 * heatmap)
         
-        # Apply colormap
-        heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        # Invert heatmap for better color distribution (blue/green for important areas)
+        heatmap_inverted = 255 - heatmap
+        
+        # Apply colormap with better color distribution (VIRIDIS has purple-blue-green-yellow)
+        heatmap_color = cv2.applyColorMap(heatmap_inverted, cv2.COLORMAP_VIRIDIS)
         
         # Create overlay
         overlay = cv2.addWeighted(original, 0.6, heatmap_color, 0.4, 0)
